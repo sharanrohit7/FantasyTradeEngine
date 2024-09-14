@@ -2,11 +2,15 @@ package main
 
 import (
 	"TradeEngine/config"
+	"TradeEngine/handlers"
+	"TradeEngine/middlewares"
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -53,4 +57,21 @@ func main() {
 		}
 		fmt.Println("Disconnected from MongoDB.")
 	}()
+
+	if rdb == nil || client == nil {
+		log.Fatal("Redis or MongoDB client not initialized")
+	}
+
+	r := gin.Default()
+
+	// Middleware for authentication
+	r.Use(middlewares.AuthMiddleware())
+
+	// Route handlers
+	r.POST("/trade", handlers.TradeHandler(rdb, client))
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "Trade Service is up and running"})
+	})
+	r.GET("/trade", handlers.GetTradesHandler(rdb))
+	r.Run(":9000")
 }
